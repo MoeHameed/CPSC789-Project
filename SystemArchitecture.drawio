@@ -1,0 +1,49 @@
+<mxfile>
+    <diagram id="fsebdlMzdCCcftSe4Pso" name="Page-1">
+        <mxGraphModel dx="2321" dy="1717" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" background="none" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="2" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="Input: Coverage region + starting point" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="297" y="-539" width="329" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="&lt;font style=&quot;font-size: 44px&quot;&gt;System Outline&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="302" y="-642" width="328" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="401.5" y="-399" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Global Planning" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="846" y="-286" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Local Planning" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="853" y="-209" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="Frontier Updating" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="856" y="-122" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="&lt;span style=&quot;font-weight: 400&quot;&gt;Space Subdivision&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;fontStyle=1" vertex="1" parent="1">
+                    <mxGeometry x="1105" y="-171" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="&lt;span style=&quot;font-weight: 400&quot;&gt;Risk Map Update&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;fontStyle=1" vertex="1" parent="1">
+                    <mxGeometry x="1111" y="-49" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="&lt;span style=&quot;font-weight: 400&quot;&gt;Model Map Update&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;fontStyle=1" vertex="1" parent="1">
+                    <mxGeometry x="1098" y="20" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="&lt;span style=&quot;font-weight: 400&quot;&gt;Trajectory Generation&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;fontStyle=1" vertex="1" parent="1">
+                    <mxGeometry x="907" y="-14" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="&lt;span&gt;UAV Control&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;fontStyle=0" vertex="1" parent="1">
+                    <mxGeometry x="690" y="11" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="Seed Generation" style="whiteSpace=wrap;html=1;rounded=0;fontStyle=0" vertex="1" parent="1">
+                    <mxGeometry x="861" y="77" width="120" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
