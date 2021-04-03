@@ -1,5 +1,4 @@
 from air_sim_client import AirSimClient as ASC
-from astar_search import AStarSearch
 import utils
 import matplotlib.pyplot as plt
 import vg
@@ -15,9 +14,47 @@ import numpy as np
 # AREA_MAX = (230, 230)
 # AREA_GROUND_HEIGHT = 1
 
+INIT_POS = (10, 76, 14)     # (X, Y, Z)
+#dark = 10, 25, 20 : 45
+INIT_AZ = 0     # Azimuth (phi): [0, 359] : 0 = Forward X-axis 
+INIT_VOL = ((1, 0, 0), (150, 150, 45))     # ((pos_x, pos_y, pos_z), (size_x, size_y, size_z)) : (position, size)
 
 def main():
-    pass
+    # Initialize AirSim connection
+    asc = ASC()
 
+    # Get start position
+    init_pos = INIT_POS
+    init_az = INIT_AZ
+    
+    # Get area/model to explore -> can use tight bounds intially
+    init_vol = INIT_VOL
+
+    # Subdivide region into convex areas -> Octree
+
+    # Fly to start position
+    #asc.flyToPosAndYaw(init_pos, init_az)
+
+    while(1):
+        val = input("> ")
+        if val == 'c':
+            asc.getDepthImg(init_pos)
+        elif val == 'q':
+            break
+    
+    # Get initial discovered region
+
+    # Main Loop
+
+        # Update cells data
+        # Update frontier data
+        # Update sectors
+        # Update global trajectory
+        # Update local trajectory
+        
+        
+    
+
+    
 if __name__ == "__main__":
     main()

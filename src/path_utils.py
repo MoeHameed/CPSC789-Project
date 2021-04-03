@@ -3,6 +3,85 @@ from scipy import interpolate
 import matplotlib.pyplot as plt
 import numpy as np
 
+# TODO: Convert path to include yaw
+
+def calcPathDist(path):
+    dist = 0
+    for i in range(len(path)-1):
+        dist += utils.euclideanDist(path[i], path[i+1])
+    dist += utils.euclideanDist(path[-2], path[-1])
+    return dist
+
+def plotPath(paths):
+    if len(paths) > 3:
+        return
+
+    ax = plt.axes(projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    
+    color = ['ro-', 'go-', 'yo-']
+    ci = 0
+
+    # Plot the paths
+    for path in paths:
+        for i in range(len(path)-1):
+            xs = [path[i][0], path[i+1][0]]
+            ys = [path[i][1], path[i+1][1]]
+            zs = [path[i][2], path[i+1][2]]
+            ax.plot3D(xs, ys, zs, color[ci])
+            #ax.text(xs[0], ys[0], zs[0], "{:.2f}".format(nodeNetworkQualCalc((xs[0], ys[0], zs[0]))))
+        ci += 1
+    
+    ax.plot3D(paths[0][0][0], paths[0][0][1], paths[0][0][2], 'bo-')
+    ax.plot3D(paths[0][-1][0], paths[0][-1][1], paths[0][-1][2], 'ko-')
+
+    # ei = 0
+    # for (x, y, z) in paths[1][1:-1]:
+    #     ax.text(x, y, z, "{:.2f}".format(errors[ei]))
+    #     ei += 1
+
+    plt.show()
+
+
+def calcTimesToPos(path):
+    timesToPos = [0]
+    for i in range(1, len(path)):
+        t = (utils.euclideanDist(path[i-1], path[i]) / 3) + 0.28
+        t = max(0, t)
+        timesToPos.append(round(t, 4))
+    return timesToPos
+
+def getBSplineInter(path, path2, showPlot=False):
+    numPoints = len(path2)
+    if len(path) > len(path2):
+        numPoints = len(path)
+
+    x_path, y_path, z_path = zip(*path)
+    tck, u = interpolate.splprep([x_path, y_path, z_path], s=2)
+    u_fine = np.linspace(0, 1, numPoints)
+    x_fine, y_fine, z_fine = interpolate.splev(u_fine, tck)
+    path_inter = list(zip(x_fine, y_fine, z_fine))
+
+    x_path2, y_path2, z_path2 = zip(*path2)
+    tck2, u2 = interpolate.splprep([x_path2, y_path2, z_path2], s=2)
+    u_fine2 = np.linspace(0, 1, numPoints)
+    x_fine2, y_fine2, z_fine2 = interpolate.splev(u_fine2, tck2)
+    path2_inter = list(zip(x_fine2, y_fine2, z_fine2))
+
+    if showPlot:
+        ax = plt.axes(projection='3d')
+        ax.plot(x_path, y_path, z_path, 'bo-')
+        ax.plot(x_fine, y_fine, z_fine, 'ro-')
+        ax.plot(x_path2, y_path2, z_path2, 'ko-')
+        ax.plot(x_fine2, y_fine2, z_fine2, 'yo-')
+        plt.show()
+
+    return path_inter, path2_inter
+
+#region Lane-Reisenfield Path Smoothing
+
 # 0 = insert midpoints, 1 = avg midpoints
 # TODO: Replace with BSpline Function
 def smoothPath(initialPath, seq):
@@ -58,78 +137,4 @@ def getCornerPoints(path):
 
     cornerPoints.append(path[-1])
     return cornerPoints
-
-def calcPathDist(path):
-    dist = 0
-    for i in range(len(path)-1):
-        dist += utils.distanceCalc(path[i], path[i+1])
-    dist += utils.distanceCalc(path[-2], path[-1])
-    return dist
-
-def plotPath(paths):
-    if len(paths) > 3:
-        return
-
-    ax = plt.axes(projection='3d')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    
-    color = ['ro-', 'go-', 'yo-']
-    ci = 0
-
-    # Plot the paths
-    for path in paths:
-        for i in range(len(path)-1):
-            xs = [path[i][0], path[i+1][0]]
-            ys = [path[i][1], path[i+1][1]]
-            zs = [path[i][2], path[i+1][2]]
-            ax.plot3D(xs, ys, zs, color[ci])
-            #ax.text(xs[0], ys[0], zs[0], "{:.2f}".format(nodeNetworkQualCalc((xs[0], ys[0], zs[0]))))
-        ci += 1
-    
-    ax.plot3D(paths[0][0][0], paths[0][0][1], paths[0][0][2], 'bo-')
-    ax.plot3D(paths[0][-1][0], paths[0][-1][1], paths[0][-1][2], 'ko-')
-
-    # ei = 0
-    # for (x, y, z) in paths[1][1:-1]:
-    #     ax.text(x, y, z, "{:.2f}".format(errors[ei]))
-    #     ei += 1
-
-    plt.show()
-
-
-def calcTimesToPos(path):
-    timesToPos = [0]
-    for i in range(1, len(path)):
-        t = (utils.distanceCalc(path[i-1], path[i]) / 3) + 0.28
-        t = max(0, t)
-        timesToPos.append(round(t, 4))
-    return timesToPos
-
-def getBSplineInter(path, path2, showPlot=False):
-    numPoints = len(path2)
-    if len(path) > len(path2):
-        numPoints = len(path)
-
-    x_path, y_path, z_path = zip(*path)
-    tck, u = interpolate.splprep([x_path, y_path, z_path], s=2)
-    u_fine = np.linspace(0, 1, numPoints)
-    x_fine, y_fine, z_fine = interpolate.splev(u_fine, tck)
-    path_inter = list(zip(x_fine, y_fine, z_fine))
-
-    x_path2, y_path2, z_path2 = zip(*path2)
-    tck2, u2 = interpolate.splprep([x_path2, y_path2, z_path2], s=2)
-    u_fine2 = np.linspace(0, 1, numPoints)
-    x_fine2, y_fine2, z_fine2 = interpolate.splev(u_fine2, tck2)
-    path2_inter = list(zip(x_fine2, y_fine2, z_fine2))
-
-    if showPlot:
-        ax = plt.axes(projection='3d')
-        ax.plot(x_path, y_path, z_path, 'bo-')
-        ax.plot(x_fine, y_fine, z_fine, 'ro-')
-        ax.plot(x_path2, y_path2, z_path2, 'ko-')
-        ax.plot(x_fine2, y_fine2, z_fine2, 'yo-')
-        plt.show()
-
-    return path_inter, path2_inter
+#endregion
