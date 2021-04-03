@@ -3,6 +3,7 @@ import utils
 import matplotlib.pyplot as plt
 import vg
 import numpy as np
+from depth_image_processor import depthImageProcessor as DIP
 
 # [X, Y, Z]
 # X = Longitude, Y = Latitude, Z = Altitude
@@ -35,12 +36,17 @@ def main():
     # Fly to start position
     #asc.flyToPosAndYaw(init_pos, init_az)
 
+    dip = DIP()
+
     while(1):
         val = input("> ")
         if val == 'c':
-            asc.getDepthImg(init_pos)
+            img, pose = asc.getDepthImg()
+            dip.pfm_to_voxel(img, pose)
         elif val == 'q':
             break
+
+    # TODO: Return cells lists of free and occupied cells with x, y, z in planning space
     
     # Get initial discovered region
 

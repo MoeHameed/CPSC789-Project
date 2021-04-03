@@ -18,11 +18,11 @@ class AirSimClient:
         self.spawnedObjs = []
         self.client = airsim.MultirotorClient()
         self.client.confirmConnection()
-        self.client.enableApiControl(True)
-        self.client.armDisarm(True)
-        print("Taking off . . .")
-        self.client.takeoffAsync().join()
-        print("Airborne!")
+        # self.client.enableApiControl(True)
+        # self.client.armDisarm(True)
+        # print("Taking off . . .")
+        # self.client.takeoffAsync().join()
+        # print("Airborne!")
 
     def spawnObject(self, name, size, position):
         """Spawns an object in the connected UE4 Environment through the AirSim client.
@@ -47,12 +47,14 @@ class AirSimClient:
         
         print("Spawned: ", objName)
 
-    # TODO: Return cells lists of free and occupied cells with x, y, z in planning space
-    def getDepthImg(self, init_pos):
+    def getDepthImg(self):
+        self.client.simPause(True)
         raw_img = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthPlanner, True, False)])[0]
-        airsim.write_png("depth_img_side.png", airsim.get_pfm_array(raw_img))
+        pose = self.client.getMultirotorState()
+        self.client.simPause(False)
+        np.clip
+        return airsim.get_pfm_array(raw_img), pose
 
-        
     def flyToPosAndYaw(self, pos_to_fly, yaw):
         pos = airsim.Vector3r(pos_to_fly[0], pos_to_fly[1], -pos_to_fly[2])
         #self.client.simPlotPoints([pos], [0, 0, 1, 1], 15, 100000, True)
