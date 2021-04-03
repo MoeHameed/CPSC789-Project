@@ -4,7 +4,7 @@ import time
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-
+from scipy.spatial.transform import Rotation as R
 from airsim.types import ImageRequest
 
 CUBE_MODEL_STR = "mycube"   # Filled in
@@ -18,11 +18,11 @@ class AirSimClient:
         self.spawnedObjs = []
         self.client = airsim.MultirotorClient()
         self.client.confirmConnection()
-        # self.client.enableApiControl(True)
-        # self.client.armDisarm(True)
-        # print("Taking off . . .")
-        # self.client.takeoffAsync().join()
-        # print("Airborne!")
+        self.client.enableApiControl(True)
+        self.client.armDisarm(True)
+        print("Taking off . . .")
+        self.client.takeoffAsync().join()
+        print("Airborne!")
 
     def spawnObject(self, name, size, position):
         """Spawns an object in the connected UE4 Environment through the AirSim client.
@@ -52,7 +52,12 @@ class AirSimClient:
         raw_img = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthPlanner, True, False)])[0]
         pose = self.client.getMultirotorState()
         self.client.simPause(False)
-        return airsim.get_pfm_array(raw_img).reshape(raw_img.height, raw_img.width, 1), (pose.rc_data.roll, pose.rc_data.pitch, pose.rc_data.yaw)
+        img = airsim.get_pfm_array(raw_img).reshape(raw_img.height, raw_img.width, 1)
+        x = pose.kinematics_estimated.position.x_val
+        y = pose.kinematics_estimated.position.y_val
+        z = -pose.kinematics_estimated.position.z_val
+        r = R.from_quat([pose.kinematics_estimated.orientation.x_val, pose.kinematics_estimated.orientation.y_val, pose.kinematics_estimated.orientation.z_val, pose.kinematics_estimated.orientation.w_val])
+        return img, ((x, y, z), (r))
 
     def flyToPosAndYaw(self, pos_to_fly, yaw):
         pos = airsim.Vector3r(pos_to_fly[0], pos_to_fly[1], -pos_to_fly[2])

@@ -18,6 +18,7 @@ class depthImageProcessor():
         fy = fx
 
         intrinsic_params = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, cx, cy)
+        # TODO: Figure out extrinsic info
         extrinsic = np.array([[1, 0., 0., 0.], 
                               [0., 1., 0., 0.], 
                               [0., 0., 1., 0.], 
@@ -28,11 +29,17 @@ class depthImageProcessor():
 
         pcd = o3d.geometry.PointCloud.create_from_depth_image(img, intrinsic_params, extrinsic)
         pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
         pcd.translate((cam_pose[0][1], cam_pose[0][0], cam_pose[0][2]))
+
         r = R.from_euler('x', 90, degrees=True)
         pcd.rotate(r.as_matrix(), center=[cam_pose[0][1], cam_pose[0][0], cam_pose[0][2]])
-        r2 = R.from_euler('z', 360-cam_pose[1][2], degrees=True)
-        pcd.rotate(r2.as_matrix(), center=[cam_pose[0][1], cam_pose[0][0], cam_pose[0][2]])
+        
+        # cam_r = cam_pose[1].as_euler('xyz', degrees=True)
+
+        # r2 = R.from_euler('xyz', [360-cam_r[0], 360-cam_r[1], 360-cam_r[2]], degrees=True)
+        # pcd.rotate(r2.as_matrix(), center=[cam_pose[0][1], cam_pose[0][0], cam_pose[0][2]])
+       pcd.rotate(cam_pose[1].inv().as_matrix(), center=[cam_pose[0][1], cam_pose[0][0], cam_pose[0][2]])
 
         voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=1)
 
@@ -43,22 +50,16 @@ class depthImageProcessor():
         sphere = o3d.geometry.TriangleMesh.create_sphere(1)
         sphere.translate((cam_pose[0][1], cam_pose[0][0], cam_pose[0][2]))
 
-        voxel_grid = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=1)
+        return [pcd, axes, sphere, bbox]
 
-        vis = o3d.visualization.Visualizer()
-        vis.create_window()
-        vis.add_geometry(pcd)
-        vis.add_geometry(axes)
-        vis.add_geometry(sphere)
+        #o3d.visualization.draw_geometries()
 
-        for i in range(360):
-            r3 = R.from_euler('z', 1, degrees=True)
-            pcd.rotate(r3.as_matrix(), center=[cam_pose[0][1], cam_pose[0][0], cam_pose[0][2]])
+        # vis = o3d.visualization.Visualizer()
+        # vis.create_window()
+        # vis.add_geometry(pcd)
+        # vis.add_geometry(axes)
+        # vis.add_geometry(sphere)
+        # vis.add_geometry(bbox)
 
-            vis.update_geometry(pcd)
-
-            vis.poll_events()
-            vis.update_renderer()
-
-
-        o3d.visualization.draw_geometries([voxel_grid, axes, sphere])
+        # vis.poll_events()
+        # vis.update_renderer()
