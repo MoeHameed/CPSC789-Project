@@ -36,7 +36,8 @@ def main():
     # Fly to start position
     #asc.flyToPosAndYaw(init_pos, init_az)
 
-    img, pose = asc.getDepthImg()
+    img, orientation = asc.getDepthImg()
+    pose = (init_pos, orientation)
     dip = DIP()
     dip.pfm_to_voxel(img, pose)
 
