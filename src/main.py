@@ -36,15 +36,10 @@ def main():
     # Fly to start position
     #asc.flyToPosAndYaw(init_pos, init_az)
 
+    img, pose = asc.getDepthImg()
     dip = DIP()
+    dip.pfm_to_voxel(img, pose)
 
-    while(1):
-        val = input("> ")
-        if val == 'c':
-            img, pose = asc.getDepthImg()
-            dip.pfm_to_voxel(img, pose)
-        elif val == 'q':
-            break
 
     # TODO: Return cells lists of free and occupied cells with x, y, z in planning space
     

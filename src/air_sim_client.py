@@ -52,7 +52,10 @@ class AirSimClient:
         raw_img = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthPlanner, True, False)])[0]
         pose = self.client.getMultirotorState()
         self.client.simPause(False)
-        np.clip
+
+        # dpeth_img_meters = airsim.get_pfm_array(raw_img).reshape(raw_img.height, raw_img.width, 1)
+        # depth_8bit_lerped = np.interp(dpeth_img_meters, (0, 150), (0, 255)).astype('uint8')
+
         return airsim.get_pfm_array(raw_img), pose
 
     def flyToPosAndYaw(self, pos_to_fly, yaw):
