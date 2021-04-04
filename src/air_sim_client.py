@@ -57,6 +57,7 @@ class AirSimClient:
         y = pose.kinematics_estimated.position.y_val
         z = -pose.kinematics_estimated.position.z_val
         r = R.from_quat([pose.kinematics_estimated.orientation.x_val, pose.kinematics_estimated.orientation.y_val, pose.kinematics_estimated.orientation.z_val, pose.kinematics_estimated.orientation.w_val])
+        print(x, y, z, r.as_matrix())
         return img, ((x, y, z), (r))
 
     def flyToPosAndYaw(self, pos_to_fly, yaw):
