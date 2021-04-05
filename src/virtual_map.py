@@ -20,19 +20,17 @@ class virtual_map():
 
         return pts
 
-    def traverse_cam_pts(self, origin, cam_pts):
+    def get_cam_traversal_pts(self, origin, cam_pts):
         total_pts = []
         for pt in cam_pts:
             total_pts.append(self.get_cells_along_line(origin, (pt[0], pt[1], pt[2])))
         
         total_pts = np.concatenate(total_pts, axis=0)
-        total_pts = np.unique(total_pts, axis=0)
-        total_pts = total_pts[1:]
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(total_pts)
-        voxels = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, 1)
-        axes = o3d.geometry.TriangleMesh.create_coordinate_frame()
-        o3d.visualization.draw_geometries([voxels, axes])
-
-
-virtual_map().traverse_cam_pts((0, 0, 0), utils.getCamPts(25, 15, 30))
+        #total_pts = np.unique(total_pts, axis=0)
+        #total_pts = total_pts[1:]
+        return total_pts
+        # pcd = o3d.geometry.PointCloud()
+        # pcd.points = o3d.utility.Vector3dVector(total_pts)
+        # voxels = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, 1)
+        # axes = o3d.geometry.TriangleMesh.create_coordinate_frame()
+        # o3d.visualization.draw_geometries([voxels, axes])

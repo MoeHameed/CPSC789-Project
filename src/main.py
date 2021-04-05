@@ -17,78 +17,32 @@ def main():
     
     vmap = VMAP()
 
-    pts = utils.getCamPts(25, 10, 20)
-
-    
-    
-
-    # vis = o3d.visualization.Visualizer()
-    # vis.create_window()
-    # vis.add_geometry(cam_pcd)
-    # vis.add_geometry(sphere)
+    init_cam_pts = utils.getCamPts(25, 10, 20)
 
     for y in range(10, 100, 5):
         asc.flyToPosAndYaw((10, y, 25), 45)
         _, ((pos), (rot)) = asc.getDepthImg()
 
+        # get rotated cam points
+        rot_pcd = o3d.geometry.PointCloud()
+        rot_pcd.points = o3d.utility.Vector3dVector(np.asarray(init_cam_pts))
+        rot_pcd.translate((pos[0], pos[1], pos[2]))
+        rot_pcd.rotate(rot.as_matrix(), center=[pos[0], pos[1], pos[2]])
+
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(np.asarray(pts))
-        pcd.translate((pos[0], pos[1], pos[2]))
-        pcd.rotate(rot.as_matrix(), center=[pos[0], pos[1], pos[2]])
+        pcd.points = o3d.utility.Vector3dVector(vmap.get_cam_traversal_pts(pos, rot_pcd.points))
+
+        voxels = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, 1)
+
+        bbox = voxels.get_axis_aligned_bounding_box()
 
         sphere = o3d.geometry.TriangleMesh.create_sphere(1)
         sphere.translate((pos[0], pos[1], pos[2]))
 
         axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
 
-        o3d.visualization.draw_geometries([pcd, sphere, axes])
+        o3d.visualization.draw_geometries([voxels, bbox, sphere, axes])
 
-        # vis.update_geometry(cam_pcd)
-        # vis.update_geometry(sphere)
-        # vis.poll_events()
-        # vis.update_renderer()
 
-    
 if __name__ == "__main__":
     main()
-
-
-
-# [X, Y, Z]
-# X = Longitude, Y = Latitude, Z = Altitude
-# Sizes in meters
-
-# Area consts
-# AREA_SIZE = (250, 250, 120)
-# AREA_MIN = (20, 20)
-# AREA_MAX = (230, 230)
-# AREA_GROUND_HEIGHT = 1
-
-
-    #     # Initialize AirSim connection
-    # asc = ASC()
-
-    # # Get start position
-    # init_pos = INIT_POS
-    # init_az = INIT_AZ
-    
-    # # Get area/model to explore -> can use tight bounds intially
-    # init_vol = INIT_VOL
-
-    
-    # asc.getDepthImg
-
-    # # Subdivide region into convex areas -> Octree
-
-
-    # # TODO: Return cells lists of free and occupied cells with x, y, z in planning space
-    
-    # # Get initial discovered region
-
-    # # Main Loop
-
-    #     # Update cells data
-    #     # Update frontier data
-    #     # Update sectors
-    #     # Update global trajectory
-    #     # Update local trajectory
