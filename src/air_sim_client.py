@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from airsim.types import ImageRequest
+import os
 
 CUBE_MODEL_STR = "mycube"   # Filled in
 CUBE2_MODEL_STR = "mycube2" # Transparent
@@ -23,6 +24,10 @@ class AirSimClient:
         print("Taking off . . .")
         self.client.takeoffAsync().join()
         print("Airborne!")
+
+    def genVoxelGrid(self):
+        output_path = os.path.join(os.getcwd(), "binvox\map.binvox")
+        self.client.simCreateVoxelGrid(airsim.Vector3r(74.5, 74.5, -26), 150, 150, 50, 1, output_path)  # aircraft
 
     def spawnObject(self, name, size, position):
         """Spawns an object in the connected UE4 Environment through the AirSim client.
@@ -49,15 +54,16 @@ class AirSimClient:
 
     def getDepthImg(self):
         self.client.simPause(True)
-        raw_img = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthPlanner, True, False)])[0]
+        #raw_img = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthPlanner, True, False)])[0]
         pose = self.client.getMultirotorState()
         self.client.simPause(False)
-        img = airsim.get_pfm_array(raw_img).reshape(raw_img.height, raw_img.width, 1)
+        #img = airsim.get_pfm_array(raw_img).reshape(raw_img.height, raw_img.width, 1)
+        img = []
         x = pose.kinematics_estimated.position.x_val
         y = pose.kinematics_estimated.position.y_val
         z = -pose.kinematics_estimated.position.z_val
         r = R.from_quat([pose.kinematics_estimated.orientation.x_val, pose.kinematics_estimated.orientation.y_val, pose.kinematics_estimated.orientation.z_val, pose.kinematics_estimated.orientation.w_val])
-        print(x, y, z, r.as_matrix())
+        #print(x, y, z, r.as_matrix())
         return img, ((x, y, z), (r))
 
     def flyToPosAndYaw(self, pos_to_fly, yaw):
