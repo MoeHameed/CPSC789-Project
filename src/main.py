@@ -17,31 +17,38 @@ def main():
     
     vmap = VMAP()
 
-    init_cam_pts = utils.getCamPts(25, 10, 20)
+    init_cam_pts = utils.getCamPts(25, 20, 36)
+
+    all_occ = []
+    all_free = []
+    all_frontier = []
 
     for y in range(10, 100, 5):
-        asc.flyToPosAndYaw((10, y, 25), 45)
+        # Fly to pose and get depth img
+        asc.flyToPosAndYaw((55, y, 20), 45)
+        #time.sleep(2)
         _, ((pos), (rot)) = asc.getDepthImg()
 
-        # get rotated cam points
-        rot_pcd = o3d.geometry.PointCloud()
-        rot_pcd.points = o3d.utility.Vector3dVector(np.asarray(init_cam_pts))
-        rot_pcd.translate((pos[0], pos[1], pos[2]))
-        rot_pcd.rotate(rot.as_matrix(), center=[pos[0], pos[1], pos[2]])
+        # Get cam points to check based on pose
+        cam_pts = utils.getRtCamPoints(init_cam_pts, pos, rot)
+        cam_traversal_pts, _ = vmap.get_cam_traversal_pts(pos, cam_pts)
 
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(vmap.get_cam_traversal_pts(pos, rot_pcd.points))
+        # Visualize cam traversal pts
+        #utils.visCamTraversalPts(cam_pts_vis, pos)
 
-        voxels = o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, 1)
+        # Traverse cam pts to get occupancies
+        occ_pts, free_pts = vmap.get_occ_for_rays(cam_traversal_pts)
+        all_occ.append(occ_pts)
+        vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
 
-        bbox = voxels.get_axis_aligned_bounding_box()
+        all_free.append(free_pts)
+        vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
 
-        sphere = o3d.geometry.TriangleMesh.create_sphere(1)
-        sphere.translate((pos[0], pos[1], pos[2]))
+        # Add/remove frontier cells
+        all_frontier = utils.getNewFrontierCells(vis_occ, vis_free, all_frontier)
 
-        axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
-
-        o3d.visualization.draw_geometries([voxels, bbox, sphere, axes])
+        # Visualize occupancies
+        utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
 
 
 if __name__ == "__main__":

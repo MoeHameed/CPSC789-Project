@@ -73,7 +73,7 @@ class AirSimClient:
         print("Flying to position and yaw . . .")
         self.client.moveToPositionAsync(pos.x_val, pos.y_val, pos.z_val, 3).join()
         self.client.rotateToYawAsync(yaw).join()
-        self.client.hoverAsync().join()
+        #self.client.hoverAsync().join()
         print("Done!")
 
     def flyPath(self, path_to_fly):
