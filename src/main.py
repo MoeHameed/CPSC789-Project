@@ -21,22 +21,23 @@ def main():
 
     all_occ = []
     all_free = []
-    all_frontier = []
+    all_frontier = np.empty((0, 3), int)
 
     for y in range(10, 100, 5):
         # Fly to pose and get depth img
         asc.flyToPosAndYaw((55, y, 20), 45)
-        #time.sleep(2)
+        #time.sleep(2)  TODO: Find a way to remove jerkiness 
+        tic = time.perf_counter()
         _, ((pos), (rot)) = asc.getDepthImg()
 
-        # Get cam points to check based on pose
+        # Get cam points to check based on pose - Takes ~1 sec
         cam_pts = utils.getRtCamPoints(init_cam_pts, pos, rot)
         cam_traversal_pts, _ = vmap.get_cam_traversal_pts(pos, cam_pts)
 
         # Visualize cam traversal pts
         #utils.visCamTraversalPts(cam_pts_vis, pos)
 
-        # Traverse cam pts to get occupancies
+        # Traverse cam pts to get occupancies - TODO: Optimize
         occ_pts, free_pts = vmap.get_occ_for_rays(cam_traversal_pts)
         all_occ.append(occ_pts)
         vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
@@ -45,7 +46,11 @@ def main():
         vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
 
         # Add/remove frontier cells
-        all_frontier = utils.getNewFrontierCells(vis_occ, vis_free, all_frontier)
+        all_frontier = np.append(all_frontier, utils.setNewFrontierCells(free_pts), axis=0)  # only send new free points TODO: Calc bounding box and send that?
+        all_frontier = utils.pruneFrontiers(all_frontier)
+
+        toc = time.perf_counter()
+        print("Time: ", toc-tic)
 
         # Visualize occupancies
         utils.visOccRays(vis_occ, vis_free, all_frontier, pos)

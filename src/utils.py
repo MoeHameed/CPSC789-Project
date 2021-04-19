@@ -2,6 +2,13 @@ import numpy as np
 import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 
+UNKNOWN = 0
+FREE = 1
+OCCUPIED = 2
+FRONTIER = 3
+
+all_cells = np.zeros((150, 150, 50), dtype=int)
+
 def cart2cyl(coord):
     """Convert cartesian tuple (x, y, z) to cylindrical tuple (radius (r), azimuth (phi), elevation (z)).
 
@@ -133,28 +140,12 @@ def visOccRays(occ_pts, free_pts, frontier_pts, pos):
     o3d.visualization.draw_geometries([frontier_voxels, occ_voxels, sphere, axes])
 
 # returns all unique cells that are on the edge 
-# TODO: Optimize
-def getNewFrontierCells(occ_pts, free_pts, frontier_pts):
-    # go through all existing frontiers and remove them if they are now in occ or free
-    # pts_to_remove = []
-    # for pt in frontier_pts:
-    #     if (occ_pts == pt).all(1).any() or (free_pts == pt).all(1).any():
-    #         pts_to_remove.append(pt)
-    
-    # frontier_pts = removeElemsFromArray(pts_to_remove, frontier_pts)
+# TODO: Optimize further?
+def setNewFrontierCells(free_pts):
+    frontiers = []
 
-    indexes_to_remove = []
-    for i in range(len(frontier_pts)):
-        if (occ_pts == frontier_pts[i]).all(1).any() or (free_pts == frontier_pts[i]).all(1).any():
-            indexes_to_remove.append(i)
-    
-    frontier_pts = np.delete(frontier_pts, indexes_to_remove, axis=0)
-
-    if len(frontier_pts) == 0:
-        frontier_pts = np.empty((0, 3), int)
-
-    # add new frontiers for free pts that are on the edge
-    # Check 6 sides of free cell, and add each side that is neither occupied nor free
+    # set frontiers pts
+    # Check 6 sides of each given free cell, and add each side that is unkown
     for (x, y, z) in free_pts:
         posx = np.array([x + 1, y, z])
         negx = np.array([x - 1, y, z])
@@ -165,20 +156,31 @@ def getNewFrontierCells(occ_pts, free_pts, frontier_pts):
         posz = np.array([x, y, z + 1])
         negz = np.array([x, y, z - 1])
 
-        if not((occ_pts == posx).all(1).any() or (free_pts == posx).all(1).any()):
-            frontier_pts = np.append(frontier_pts, [posx], axis=0)
-        if not((occ_pts == negx).all(1).any() or (free_pts == negx).all(1).any()):
-            frontier_pts = np.append(frontier_pts, [negx], axis=0)
-        if not((occ_pts == posy).all(1).any() or (free_pts == posy).all(1).any()):
-            frontier_pts = np.append(frontier_pts, [posy], axis=0)
-        if not((occ_pts == negy).all(1).any() or (free_pts == negy).all(1).any()):
-            frontier_pts = np.append(frontier_pts, [negy], axis=0)
-        if not((occ_pts == posz).all(1).any() or (free_pts == posz).all(1).any()):
-            frontier_pts = np.append(frontier_pts, [posz], axis=0)
-        if not((occ_pts == negz).all(1).any() or (free_pts == negz).all(1).any()):
-            frontier_pts = np.append(frontier_pts, [negz], axis=0)
+        if all_cells[posx[0]][posx[1]][posx[2]] == UNKNOWN:
+            all_cells[posx[0]][posx[1]][posx[2]] = FRONTIER
+            frontiers.append(posx)
 
-    return frontier_pts
+        if all_cells[negx[0]][negx[1]][negx[2]] == UNKNOWN:
+            all_cells[negx[0]][negx[1]][negx[2]] = FRONTIER
+            frontiers.append(negx)
+
+        if all_cells[posy[0]][posy[1]][posy[2]] == UNKNOWN:
+            all_cells[posy[0]][posy[1]][posy[2]] = FRONTIER
+            frontiers.append(posy)
+
+        if all_cells[negy[0]][negy[1]][negy[2]] == UNKNOWN:
+            all_cells[negy[0]][negy[1]][negy[2]] = FRONTIER
+            frontiers.append(negy)
+
+        if all_cells[posz[0]][posz[1]][posz[2]] == UNKNOWN:
+            all_cells[posz[0]][posz[1]][posz[2]] = FRONTIER
+            frontiers.append(posz)
+
+        if all_cells[negz[0]][negz[1]][negz[2]] == UNKNOWN:
+            all_cells[negz[0]][negz[1]][negz[2]] = FRONTIER
+            frontiers.append(negz)
+
+    return frontiers
 
 # TODO: Optimize
 # Remove arrays from list of arrays
@@ -189,3 +191,13 @@ def removeElemsFromArray(elems, arr):
                 arr.pop(i)
                 break
     return arr
+
+# TODO: Optimize
+def pruneFrontiers(all_frontiers):
+    frontier = np.empty((0, 3), int)
+
+    for (x, y, z) in all_frontiers:
+        if all_cells[x][y][z] == FRONTIER:
+            frontier = np.append(frontier, [[x, y, z]], axis=0)
+
+    return frontier

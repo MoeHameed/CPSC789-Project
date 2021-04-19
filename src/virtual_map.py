@@ -34,7 +34,6 @@ class virtual_map():
         return total_pts, total_pts_vis
 
     # True if occupied, False if free
-    # TODO: Range check
     def get_voxel_occ(self, cell):
         (x_lim, y_lim, z_lim) = self.voxels.data.shape
         if cell[0] in range(0, x_lim) and cell[1] in range(0, y_lim) and cell[2] in range(0, z_lim):
@@ -42,20 +41,24 @@ class virtual_map():
         else:
             return False
 
+    # TODO: Optimize?
     def get_occ_for_ray(self, cells):
         free_cells = []
         occ_cell = []
 
         for cell in cells:
-            # get voxel occupancy at cell
+            # get voxel occupancy at cell - overwrites existing cell values
             if self.get_voxel_occ(cell):
                 occ_cell.append(cell)
+                utils.all_cells[cell[0]][cell[1]][cell[2]] = utils.OCCUPIED
                 break
             else:
                 free_cells.append(cell)
+                utils.all_cells[cell[0]][cell[1]][cell[2]] = utils.FREE
 
         return free_cells, occ_cell
-
+    
+    # TODO: Optimize?
     def get_occ_for_rays(self, rays):
         total_occ = []
         total_free = []
