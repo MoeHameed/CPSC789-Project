@@ -84,7 +84,7 @@ def getCamPts(r, height, width):
     # return pcd
 
 def getRtCamPoints(cam_pts, pos, rot):
-    # get rotated cam points TODO: Find optimized alternative using Rt matrix
+    # get rotated cam points TODO: Find optimized alternative using Rt matrix, but its already really fast ~0.0002
     rot_pcd = o3d.geometry.PointCloud()
     rot_pcd.points = o3d.utility.Vector3dVector(np.asarray(cam_pts))
     rot_pcd.translate((pos[0], pos[1], pos[2]))

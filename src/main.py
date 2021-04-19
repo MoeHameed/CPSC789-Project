@@ -32,25 +32,33 @@ def main():
 
         # Get cam points to check based on pose - Takes ~1 sec
         cam_pts = utils.getRtCamPoints(init_cam_pts, pos, rot)
-        cam_traversal_pts, _ = vmap.get_cam_traversal_pts(pos, cam_pts)
 
-        # Visualize cam traversal pts
-        #utils.visCamTraversalPts(cam_pts_vis, pos)
+        cam_tic = time.perf_counter()
+        cam_traversal_pts = vmap.get_cam_traversal_pts(pos, cam_pts)
+        cam_toc = time.perf_counter()
 
         # Traverse cam pts to get occupancies - TODO: Optimize
+        trav_tic = time.perf_counter()
         occ_pts, free_pts = vmap.get_occ_for_rays(cam_traversal_pts)
+
         all_occ.append(occ_pts)
         vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
 
         all_free.append(free_pts)
         vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
+        trav_toc = time.perf_counter()
 
         # Add/remove frontier cells
+        frontier_tic = time.perf_counter()
         all_frontier = np.append(all_frontier, utils.setNewFrontierCells(free_pts), axis=0)  # only send new free points TODO: Calc bounding box and send that?
         all_frontier = utils.pruneFrontiers(all_frontier)
+        frontier_toc = time.perf_counter()
 
         toc = time.perf_counter()
-        print("Time: ", toc-tic)
+        print("Cam Time:", cam_toc-cam_tic)
+        print("Trav Time:", trav_toc-trav_tic)
+        print("Frontier Time:", frontier_toc-frontier_tic)
+        print("= Total Time:", toc-tic)
 
         # Visualize occupancies
         utils.visOccRays(vis_occ, vis_free, all_frontier, pos)

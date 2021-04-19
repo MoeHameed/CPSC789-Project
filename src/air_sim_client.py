@@ -70,11 +70,11 @@ class AirSimClient:
         pos = airsim.Vector3r(pos_to_fly[0], pos_to_fly[1], -pos_to_fly[2])
         #self.client.simPlotPoints([pos], [0, 0, 1, 1], 15, 100000, True)
 
-        print("Flying to position and yaw . . .")
+        #print("Flying to position and yaw . . .")
         self.client.moveToPositionAsync(pos.x_val, pos.y_val, pos.z_val, 3).join()
         self.client.rotateToYawAsync(yaw).join()
         #self.client.hoverAsync().join()
-        print("Done!")
+        #print("Done!")
 
     def flyPath(self, path_to_fly):
         self.client.enableApiControl(True)
