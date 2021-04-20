@@ -17,11 +17,13 @@ def main():
     
     vmap = VMAP()
 
-    init_cam_pts = utils.getCamPts(25, 25, 44)
+    init_cam_pts = utils.getCamPts(25, 20, 36)
 
-    all_occ = []
-    all_free = []
+    all_occ = np.empty((0, 3), int)
+    all_free = np.empty((0, 3), int)
     all_frontier = np.empty((0, 3), int)
+
+    all_tic = time.perf_counter()
 
     for y in range(10, 100, 5):
         # Fly to pose and get depth img
@@ -40,10 +42,10 @@ def main():
         trav_tic = time.perf_counter()
         occ_pts, free_pts = vmap.get_occ_for_rays(cam_traversal_pts)
 
-        all_occ.append(occ_pts)
+        all_occ = np.append(all_occ, occ_pts, axis=0)
         #vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
 
-        all_free.append(free_pts)
+        all_free = np.append(all_free, free_pts, axis=0)
         #vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
         trav_toc = time.perf_counter()
 
@@ -56,8 +58,13 @@ def main():
         print("Cam Time:", cam_toc-cam_tic)
         print("Trav Time:", trav_toc-trav_tic)
         print("Frontier Time:", frontier_toc-frontier_tic)
-        print("= Total Time:", toc-tic)
+        print("= Iter Time:", toc-tic)
         print("")
+    
+    all_toc = time.perf_counter()
+
+    print("== TOTAL TIME:", all_toc-all_tic)
+    print("")
 
     vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
     vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
@@ -65,7 +72,6 @@ def main():
 
     # Visualize occupancies
     utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
-
 
 if __name__ == "__main__":
     main()
