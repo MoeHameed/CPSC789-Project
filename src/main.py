@@ -17,7 +17,7 @@ def main():
     
     vmap = VMAP()
 
-    init_cam_pts = utils.getCamPts(25, 20, 36)
+    init_cam_pts = utils.getCamPts(25, 25, 44)
 
     all_occ = []
     all_free = []
@@ -30,28 +30,26 @@ def main():
         tic = time.perf_counter()
         _, ((pos), (rot)) = asc.getDepthImg()
 
-        # Get cam points to check based on pose - Takes ~1 sec
-        cam_pts = utils.getRtCamPoints(init_cam_pts, pos, rot)
-
+        # Get cam points to check based on pose - Takes ~1 sec - TODO: Optimize
         cam_tic = time.perf_counter()
-        cam_traversal_pts = vmap.get_cam_traversal_pts(pos, cam_pts)
+        cam_pts = utils.getRtCamPoints(init_cam_pts, pos, rot)
+        cam_traversal_pts = utils.get_cam_traversal_pts(pos, cam_pts)
         cam_toc = time.perf_counter()
 
-        # Traverse cam pts to get occupancies - TODO: Optimize
+        # Traverse cam pts to get occupancies - Takes ~1 sec - TODO: Optimize
         trav_tic = time.perf_counter()
         occ_pts, free_pts = vmap.get_occ_for_rays(cam_traversal_pts)
 
         all_occ.append(occ_pts)
-        vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
+        #vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
 
         all_free.append(free_pts)
-        vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
+        #vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
         trav_toc = time.perf_counter()
 
         # Add/remove frontier cells
         frontier_tic = time.perf_counter()
         all_frontier = np.append(all_frontier, utils.setNewFrontierCells(free_pts), axis=0)  # only send new free points TODO: Calc bounding box and send that?
-        all_frontier = utils.pruneFrontiers(all_frontier)
         frontier_toc = time.perf_counter()
 
         toc = time.perf_counter()
@@ -59,9 +57,14 @@ def main():
         print("Trav Time:", trav_toc-trav_tic)
         print("Frontier Time:", frontier_toc-frontier_tic)
         print("= Total Time:", toc-tic)
+        print("")
 
-        # Visualize occupancies
-        utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
+    vis_occ = np.unique(np.concatenate(all_occ, axis=0), axis=0)
+    vis_free = np.unique(np.concatenate(all_free, axis=0), axis=0)
+    all_frontier = utils.pruneFrontiers(all_frontier)
+
+    # Visualize occupancies
+    utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
 
 
 if __name__ == "__main__":

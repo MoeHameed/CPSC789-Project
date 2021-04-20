@@ -64,11 +64,12 @@ def euclideanDist(A, B):
     return np.linalg.norm(a-b)
 
 def getCamPts(r, height, width):
-    pts = []
+    pts = np.empty((0, 3), int)
     for i in range(-width, width):
         for j in range(-height, height):
-            pts.append(sph2cart(i, j, r))
-    return np.asarray(pts)
+            pt = np.round(sph2cart(i, j, r)).astype(int)
+            pts = np.append(pts, [pt], axis=0)
+    return np.unique(pts, axis=0)
     
     # axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0])
 
@@ -201,3 +202,34 @@ def pruneFrontiers(all_frontiers):
             frontier = np.append(frontier, [[x, y, z]], axis=0)
 
     return frontier
+
+def round_safe(coords):
+    if (len(coords) > 1
+            and coords[0] % 1 == 0.5
+            and coords[1] - coords[0] == 1):
+        _round_function = np.floor
+    else:
+        _round_function = np.round
+    return _round_function(coords).astype(int)
+
+total_rays_pts = []
+
+def get_cells_along_line(start, stop):
+    global total_rays_pts
+    start = np.asarray(start)
+    stop = np.asarray(stop)
+    npoints = int(np.ceil(np.max(np.abs(stop - start)))) + 1
+
+    coords = []
+    for dim in range(len(start)):
+        dimcoords = np.linspace(start[dim], stop[dim], npoints, True)
+        dimcoords = round_safe(dimcoords).astype(int)
+        coords.append(dimcoords)
+
+    return list(zip(coords[0], coords[1], coords[2]))
+
+def get_cam_traversal_pts(origin, cam_pts):
+    rays = []
+    for pt in cam_pts:
+        rays.append(get_cells_along_line(origin, (pt[0], pt[1], pt[2])))
+    return rays
