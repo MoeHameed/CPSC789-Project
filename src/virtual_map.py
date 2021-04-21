@@ -1,9 +1,10 @@
 import modules.binvox_rw as bvox
-import utils
+import my_utils
 import skimage.draw as sk
 import open3d as o3d
 import numpy as np
 from pprint import pprint
+import time
 
 class virtual_map():
     def __init__(self):
@@ -23,14 +24,20 @@ class virtual_map():
         occ_cell = []
 
         for cell in cells:
+            if my_utils.all_cells[cell[0]][cell[1]][cell[2]] == my_utils.OCCUPIED:
+                break
+            
+            if my_utils.all_cells[cell[0]][cell[1]][cell[2]] == my_utils.FREE:
+                continue
+
             # get voxel occupancy at cell - overwrites existing cell values
             if self.get_voxel_occ(cell):
                 occ_cell.append(cell)
-                utils.all_cells[cell[0]][cell[1]][cell[2]] = utils.OCCUPIED
+                my_utils.all_cells[cell[0]][cell[1]][cell[2]] = my_utils.OCCUPIED
                 break
             else:
                 free_cells.append(cell)
-                utils.all_cells[cell[0]][cell[1]][cell[2]] = utils.FREE
+                my_utils.all_cells[cell[0]][cell[1]][cell[2]] = my_utils.FREE
 
         return free_cells, occ_cell
     
@@ -46,12 +53,14 @@ class virtual_map():
             if len(occ) > 0:
                 total_occ.append(occ)
 
-        total_free = np.concatenate(total_free, axis=0)
-        total_free = np.unique(total_free, axis=0)
+        if len(total_free) > 0:
+            total_free = np.concatenate(total_free, axis=0)
+            total_free = np.unique(total_free, axis=0)
 
-        total_occ = np.concatenate(total_occ, axis=0)
-        total_occ = np.unique(total_occ, axis=0)
-        total_occ = total_occ[1:]
+        if len(total_occ) > 0:
+            total_occ = np.concatenate(total_occ, axis=0)
+            total_occ = np.unique(total_occ, axis=0)
+            total_occ = total_occ[1:]
 
         return total_occ, total_free
 

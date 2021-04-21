@@ -1,4 +1,4 @@
-import vg, utils
+import vg, my_utils 
 from scipy import interpolate
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,8 +8,8 @@ import numpy as np
 def calcPathDist(path):
     dist = 0
     for i in range(len(path)-1):
-        dist += utils.euclideanDist(path[i], path[i+1])
-    dist += utils.euclideanDist(path[-2], path[-1])
+        dist += my_utils.euclideanDist(path[i], path[i+1])
+    dist += my_utils.euclideanDist(path[-2], path[-1])
     return dist
 
 def plotPath(paths):
@@ -48,7 +48,7 @@ def plotPath(paths):
 def calcTimesToPos(path):
     timesToPos = [0]
     for i in range(1, len(path)):
-        t = (utils.euclideanDist(path[i-1], path[i]) / 3) + 0.28
+        t = (my_utils.euclideanDist(path[i-1], path[i]) / 3) + 0.28
         t = max(0, t)
         timesToPos.append(round(t, 4))
     return timesToPos

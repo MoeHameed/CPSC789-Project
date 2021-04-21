@@ -1,4 +1,4 @@
-import utils
+import my_utils
 from modules.a_star import AStar
 
 # TODO: Include yaw in search
@@ -14,10 +14,10 @@ class AStarSearch(AStar):
         return path
 
     def heuristic_cost_estimate(self, n1, n2):
-        return utils.euclideanDist(n1, n2)
+        return my_utils.euclideanDist(n1, n2)
 
     def distance_between(self, n1, n2):
-        return utils.euclideanDist(n1, n2)
+        return my_utils.euclideanDist(n1, n2)
 
     def neighbors(self, node):
         x, y, z = node
@@ -26,4 +26,4 @@ class AStarSearch(AStar):
         return neighborNodesList
 
     def is_goal_reached(self, current, goal):
-        return current == goal or utils.euclideanDist(current, goal) < 4
+        return current == goal or my_utils.euclideanDist(current, goal) < 4
