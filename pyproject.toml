@@ -16,6 +16,7 @@ opencv-contrib-python = "^4.5.1"
 msgpack-rpc-python = "^0.4.1"
 msgpack-python = "^0.5.6"
 scikit-image = "^0.18.1"
+python-tsp = "^0.2.0"
 
 [tool.poetry.dev-dependencies]
 

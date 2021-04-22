@@ -731,6 +731,17 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 six = ">=1.5"
 
 [[package]]
+name = "python-tsp"
+version = "0.2.0"
+description = "Simple library to solve the Traveling Salesperson Problem in pure Python."
+category = "main"
+optional = false
+python-versions = ">=3.6,<4.0"
+
+[package.dependencies]
+numpy = ">=1.18.5,<2.0.0"
+
+[[package]]
 name = "pytz"
 version = "2021.1"
 description = "World timezone definitions, modern and historical"
@@ -1047,7 +1058,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7"
-content-hash = "00638f9085ac3f1240d41fed07a2733317525f9d3656872bbf2db469af5d71b0"
+content-hash = "547f71e90979d205489ae9003562ed68bfb2e33bdef8588ba2e8840188049648"
 
 [metadata.files]
 addict = [
@@ -1546,6 +1557,10 @@ pyrsistent = [
 python-dateutil = [
     {file = "python-dateutil-2.8.1.tar.gz", hash = "sha256:73ebfe9dbf22e832286dafa60473e4cd239f8592f699aa5adaf10050e6e1823c"},
     {file = "python_dateutil-2.8.1-py2.py3-none-any.whl", hash = "sha256:75bb3f31ea686f1197762692a9ee6a7550b59fc6ca3a1f4b5d7e32fb98e2da2a"},
+]
+python-tsp = [
+    {file = "python_tsp-0.2.0-py3-none-any.whl", hash = "sha256:fca434ae7c64259c13370f5e15cebf302e320aeee7f4cb3d3b0ab0b920fcc150"},
+    {file = "python_tsp-0.2.0.tar.gz", hash = "sha256:32f0522c7e6c96960102ce8e08cc5a75e75a6d48a95ebc62112ace182b6469fe"},
 ]
 pytz = [
     {file = "pytz-2021.1-py2.py3-none-any.whl", hash = "sha256:eb10ce3e7736052ed3623d49975ce333bcd712c7bb19a58b9e2089d4057d0798"},

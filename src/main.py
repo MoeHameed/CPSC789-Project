@@ -15,8 +15,6 @@ INIT_VOL = ((1, 0, 0), (150, 150, 50))     # ((pos_x, pos_y, pos_z), (size_x, si
 def main():
     total_proc_time = 0
 
-    asc = ASC()
-    
     vmap = VMAP()
 
     init_cam_pts = my_utils.getCamPts(25, 20, 36)
@@ -26,9 +24,18 @@ def main():
     all_frontier = np.empty((0, 3), int)
 
 
-    # Calculate global path
+    # Calculate global path -> 6 x 6 x 2 sectors of 25 x 25 x 25 each
+    # Create sectors
+    sectors = my_utils.calcSectors()
 
+    # Calculate inital hamiltonian order between sectors -> list of sector mid points in order to traverse them in, the total euclidean distance 
+    sec_order, global_dist = my_utils.calcHamOrder(sectors)
 
+    # Calculate A* path between each sector -> list of (list of coords between sector a and b)
+    
+
+    # start airsim connection
+    asc = ASC()
     asc.flyToPosAndYaw(INIT_POSE)
 
     poses = deque()
@@ -47,7 +54,7 @@ def main():
 
     all_tic = time.perf_counter()
 
-    while covered_percent < 100:
+    while covered_percent < 100:    # TODO: replace with all possible sectors explored
         # Fly to pose and get depth img
         asc.flyToPosAndYaw(poses.pop())
 

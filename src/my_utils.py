@@ -1,7 +1,10 @@
+import time
 import numpy as np
 import open3d as o3d
 from scipy.spatial.transform import Rotation as R
 import math
+from python_tsp.exact import solve_tsp_dynamic_programming, solve_tsp_brute_force
+from python_tsp.heuristics import solve_tsp_local_search
 
 UNKNOWN = 0
 FREE = 1
@@ -371,13 +374,67 @@ def calcPoses(bbox, occ_pts):
 
     minxyz, maxxyz = bbox
 
-    for _ in range(25):
-        x = np.random.randint(low=minxyz[0], high=maxxyz[0])
-        y = np.random.randint(low=minxyz[1], high=maxxyz[1])
-        z = np.random.randint(low=minxyz[2], high=maxxyz[2])
+    while len(possible_poses) < 1:
+        for _ in range(25):
+            x = np.random.randint(low=minxyz[0], high=maxxyz[0])
+            y = np.random.randint(low=minxyz[1], high=maxxyz[1])
+            z = np.random.randint(low=minxyz[2], high=maxxyz[2])
 
-        if all_cells[x][y][z] == FREE and minDistToCells((x, y, z), occ_pts) > 4:
-            az = np.random.choice([0, 45, 90, 135, 180, 225, 270, 315])
-            possible_poses.append((x, y, z, az))
+            if all_cells[x][y][z] == FREE and minDistToCells((x, y, z), occ_pts) > 4:
+                az = np.random.choice([0, 45, 90, 135, 180, 225, 270, 315])
+                possible_poses.append((x, y, z, az))
 
     return possible_poses
+
+# Calculate centers of even sectors of 25 x 25 x 25 within volume 
+def calcSectors():
+
+    pts = []
+    for z in range(0, 50, 25):
+        for x in range(0, 150, 25):
+            for y in range(0, 150, 25):
+                pts.append([x+12, y+12, z+12])
+
+    # lines = []
+    # for i in range(len(pts)-1):
+    #     lines.append([i, i+1])
+
+    # axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=150, origin=[0, 0, 0])
+    # line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(pts), lines=o3d.utility.Vector2iVector(lines))
+    # o3d.visualization.draw_geometries([line_set, axes])
+
+    return pts
+
+# Calculate hamiltonian path between given pts => uses TSP solver
+# returns pts in order to traverse them in
+def calcHamOrder(pts):
+    # calc distance matrix between each point
+    distMat = []
+    for pt in pts:
+        dists = []
+        for pt2 in pts:
+            dists.append(np.round(euclideanDist(pt, pt2)).astype(int))
+        distMat.append(dists)
+
+    # remove first col since we aren't going back to start
+    distMat = np.asarray(distMat)
+    distMat[:, 0] = 0
+
+    # solve tsp
+    perm, dist = solve_tsp_local_search(distMat)
+
+    # get pts correseponding to each idx
+    new_pts = []
+    for i in perm:
+        new_pts.append(pts[i])
+    
+    #Viz
+    # lines = []
+    # for i in range(len(new_pts)-1):
+    #     lines.append([i, i+1])
+
+    # axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
+    # line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(new_pts), lines=o3d.utility.Vector2iVector(lines))
+    # o3d.visualization.draw_geometries([line_set, axes])
+
+    return new_pts, dist
