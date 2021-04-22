@@ -32,7 +32,7 @@ def main():
     sec_order, global_dist = my_utils.calcHamOrder(sectors)
 
     # Calculate A* path between each sector -> list of (list of coords between sector a and b)
-    
+    init_path = my_utils.calcAStarBetweenPaths(sec_order)
 
     # start airsim connection
     asc = ASC()

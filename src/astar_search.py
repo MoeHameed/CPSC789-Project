@@ -17,12 +17,16 @@ class AStarSearch(AStar):
         return my_utils.euclideanDist(n1, n2)
 
     def distance_between(self, n1, n2):
-        return my_utils.euclideanDist(n1, n2)
+        #return my_utils.euclideanDist(n1, n2)
+        return 1
 
     def neighbors(self, node):
         x, y, z = node
         neighborNodesList = [(nx, ny, nz) for nx, ny, nz in [(x, y, z - 3), (x, y, z + 3), (x, y - 3, z), (x, y - 3, z - 3), (x, y - 3, z + 3), (x, y + 3, z), (x, y + 3, z - 3), (x, y + 3, z + 3), (x - 3, y, z), (x - 3, y, z - 3), (x - 3, y, z + 3), (x - 3, y - 3, z), (x - 3, y - 3, z - 3), (x - 3, y - 3, z + 3), (x - 3, y + 3, z), (x - 3, y + 3, z - 3), (x - 3, y + 3, z + 3), (x + 3, y, z), (x + 3, y, z - 3), (x + 3, y, z + 3), (x + 3, y - 3, z), (x + 3, y - 3, z - 3), (x + 3, y - 3, z + 3), (x + 3, y + 3, z), (x + 3, y + 3, z - 3), (x + 3, y + 3, z + 3)]]
-        # TODO: Check if any node in nodeList is intersecting with an obstacle
+        
+        # Check if any node in nodeList is intersecting with an obstacle
+        neighborNodesList = [n for n in neighborNodesList if my_utils.get_cell(n) != my_utils.OCCUPIED]
+        
         return neighborNodesList
 
     def is_goal_reached(self, current, goal):

@@ -5,6 +5,7 @@ from scipy.spatial.transform import Rotation as R
 import math
 from python_tsp.exact import solve_tsp_dynamic_programming, solve_tsp_brute_force
 from python_tsp.heuristics import solve_tsp_local_search
+from astar_search import AStarSearch
 
 UNKNOWN = 0
 FREE = 1
@@ -438,3 +439,34 @@ def calcHamOrder(pts):
     # o3d.visualization.draw_geometries([line_set, axes])
 
     return new_pts, dist
+
+# Calculate a-star path between all pts using distance and checking for obstacles
+def calcAStarBetweenPaths(pts, startPt=None):
+    pts = [tuple(l) for l in pts]
+
+    if startPt != None:
+        pts.insert(0, startPt)
+
+    astar = AStarSearch()
+
+    all_path_pts = []
+
+    for i in range(len(pts)-1):
+        path = astar.search(pts[i], pts[i+1])
+        all_path_pts.append(path)
+
+    # Viz
+    path_pts = np.concatenate(all_path_pts, axis=0)
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(path_pts)
+
+    lines = []
+    for i in range(len(path_pts)-1):
+        lines.append([i, i+1])
+
+    axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
+    line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(path_pts), lines=o3d.utility.Vector2iVector(lines))
+    o3d.visualization.draw_geometries([line_set, pcd, axes])
+
+    return all_path_pts
+
