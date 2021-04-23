@@ -122,7 +122,7 @@ def visCamTraversalPts(pts, pos):
 
     axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
 
-    o3d.visualization.draw_geometries([voxels, bbox, sphere, axes])
+    o3d.visualization.draw_geometries([voxels, bbox, sphere, axes]) # pylint: disable=maybe-no-member
 
 def visOccRays(occ_pts, free_pts, frontier_pts, pos):
     # flip axis for vis
@@ -134,7 +134,7 @@ def visOccRays(occ_pts, free_pts, frontier_pts, pos):
     free_pcd.points = o3d.utility.Vector3dVector(free_pts)
     free_pcd.paint_uniform_color([1, 0.706, 0])
 
-    free_voxels = o3d.geometry.VoxelGrid.create_from_point_cloud(free_pcd, 1)
+    #free_voxels = o3d.geometry.VoxelGrid.create_from_point_cloud(free_pcd, 1)
 
     occ_pcd = o3d.geometry.PointCloud()
     occ_pcd.points = o3d.utility.Vector3dVector(occ_pts)
@@ -155,7 +155,7 @@ def visOccRays(occ_pts, free_pts, frontier_pts, pos):
 
     axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
 
-    o3d.visualization.draw_geometries([frontier_voxels, occ_voxels, sphere, axes])
+    o3d.visualization.draw_geometries([frontier_voxels, occ_voxels, sphere, axes]) # pylint: disable=maybe-no-member
 
 
 # TODO: Optimize & Use probabilistic logic to reduce noise, can also use a 3x3 kernel based on how many are frontier/free/occ
@@ -245,6 +245,7 @@ def get_cells_along_line2(start, stop):
 
     return list(zip(coords[0], coords[1], coords[2]))
 
+# Bresenham's 3D
 def get_cells_along_line(start, stop):
     (x1, y1, z1) = round_safe(start).astype(int)
     (x2, y2, z2) = round_safe(stop).astype(int)
@@ -358,7 +359,7 @@ def clean_frontiers(frontiers):
     return new_pts
 
 def minDistToCells(cell_to_chk, cells):
-    minDist = 0
+    minDist = math.inf
 
     for cell in cells:
         d = euclideanDist(cell_to_chk, cell)
@@ -367,25 +368,54 @@ def minDistToCells(cell_to_chk, cells):
     
     return minDist
 
+def findPoseClosest(pt_to_be_near, pts_to_chk):
+    minDist = math.inf
+    closest_pt = pts_to_chk[0]
+
+    for (x, y, z, az) in pts_to_chk:
+        d = euclideanDist((x, y, z), pt_to_be_near)
+        if d < minDist:
+            minDist = d
+            closest_pt = (x, y, z, az)
+    
+    return closest_pt, minDist
+
 # randomly sample for poses in free cells around occupied cells
 # given frontier bbox, new occ pts
 # return list of possible poses
+# TODO: use multithreading to speed up random search?
 def calcPoses(bbox, occ_pts):
     possible_poses = []
 
     minxyz, maxxyz = bbox
 
+    minOccPercent = 0.0
+    minFrontPercent = 0.25
+
+    if len(occ_pts) > 0:
+        minOccPercent = 0.10
+
     while len(possible_poses) < 1:
-        for _ in range(25):
+        # get up to 5 valid possible poses - small for speed
+        for _ in range(5):
             x = np.random.randint(low=minxyz[0], high=maxxyz[0])
             y = np.random.randint(low=minxyz[1], high=maxxyz[1])
             z = np.random.randint(low=minxyz[2], high=maxxyz[2])
 
             if all_cells[x][y][z] == FREE and minDistToCells((x, y, z), occ_pts) > 4:
-                az = np.random.choice([0, 45, 90, 135, 180, 225, 270, 315])
-                possible_poses.append((x, y, z, az))
+                # check 4 of the poses - small for speed 
+                for _ in range(4):
+                    az = np.random.choice([0, 45, 90, 135, 180, 225, 270, 315])
+                    if is_good_pose((x, y, z, az), minOccPercent, minFrontPercent):
+                        possible_poses.append((x, y, z, az))
 
     return possible_poses
+
+# Determine if the pose is good
+# Based on if min occ percent and min front percent are met by pose 
+def is_good_pose(pose, minOccPer, minFrontPer):
+    # Use raycasting (using all_cells) to determine how many occupied and frontier would be covered 
+    return True
 
 # Calculate centers of even sectors of 25 x 25 x 25 within volume 
 def calcSectors():
@@ -453,20 +483,19 @@ def calcAStarBetweenPaths(pts, startPt=None):
 
     for i in range(len(pts)-1):
         path = astar.search(pts[i], pts[i+1])
-        all_path_pts.append(path)
+        all_path_pts.append(path)    # Add to a deque
 
     # Viz
-    path_pts = np.concatenate(all_path_pts, axis=0)
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(path_pts)
+    # path_pts = np.concatenate(all_path_pts, axis=0)
+    # pcd = o3d.geometry.PointCloud()
+    # pcd.points = o3d.utility.Vector3dVector(path_pts)
 
-    lines = []
-    for i in range(len(path_pts)-1):
-        lines.append([i, i+1])
+    # lines = []
+    # for i in range(len(path_pts)-1):
+    #     lines.append([i, i+1])
 
-    axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
-    line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(path_pts), lines=o3d.utility.Vector2iVector(lines))
-    o3d.visualization.draw_geometries([line_set, pcd, axes])
+    # axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
+    # line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(path_pts), lines=o3d.utility.Vector2iVector(lines))
+    # o3d.visualization.draw_geometries([line_set, pcd, axes]) # pylint: disable=maybe-no-member
 
     return all_path_pts
-

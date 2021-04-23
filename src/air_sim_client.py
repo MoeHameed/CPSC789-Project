@@ -23,7 +23,7 @@ class AirSimClient:
         self.client.armDisarm(True)
         print("Taking off . . .")
         self.client.takeoffAsync().join()
-        print("Airborne!")
+        print("Airborne!\n")
 
     def genVoxelGrid(self):
         output_path = os.path.join(os.getcwd(), "binvox\map.binvox")
@@ -70,11 +70,11 @@ class AirSimClient:
         pos = airsim.Vector3r(pose[0], pose[1], -pose[2])
         #self.client.simPlotPoints([pos], [0, 0, 1, 1], 15, 100000, True)
 
-        #print("Flying to position and yaw . . .")
+        print("Flying to position", pose[0], pose[1], pose[2], "and yaw", pose[3], ". . .")
         self.client.moveToPositionAsync(pos.x_val, pos.y_val, pos.z_val, 3).join()
         self.client.rotateToYawAsync(int(pose[3])).join()
         #self.client.hoverAsync().join()
-        #print("Done!")
+        print("Done!")
 
     def flyPath(self, path_to_fly):
         self.client.enableApiControl(True)
