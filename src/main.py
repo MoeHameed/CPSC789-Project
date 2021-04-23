@@ -18,7 +18,7 @@ def main():
 
     vmap = VMAP()
 
-    init_cam_pts = my_utils.getCamPts(25, 20, 36)
+    init_cam_pts = my_utils.getCamPts(30, 30, 53)
 
     all_occ = np.empty((0, 3), int)
     all_free = np.empty((0, 3), int)
@@ -57,8 +57,6 @@ def main():
     # poses.appendleft((55, 50, 20, 45))
     # poses.appendleft((55, 55, 20, 45))
 
-    covered_percent = 0
-
     print("Starting AirSimClient . . .")
 
     # start airsim connection
@@ -66,7 +64,7 @@ def main():
 
     all_tic = time.perf_counter()
 
-    while covered_percent < 100:    # TODO: replace with all possible sectors explored
+    while len(init_path_deque):    # TODO: replace with all possible sectors explored
         # Fly to pose and get depth img
         asc.flyToPosAndYaw(poses.pop())
 
@@ -87,9 +85,6 @@ def main():
         trav_tic = time.perf_counter()
         occ_pts, free_pts = vmap.get_occ_for_rays(cam_traversal_pts)
 
-        if len(occ_pts) > 0:
-            all_occ = np.append(all_occ, occ_pts, axis=0)
-
         if len(free_pts) > 0:
             all_free = np.append(all_free, free_pts, axis=0)
         trav_toc = time.perf_counter()
@@ -98,8 +93,18 @@ def main():
         print("Calculating and cleaning frontiers . . .")
         frontier_tic = time.perf_counter()
         new_frontier_pts = my_utils.setNewFrontierCells(free_pts)
-        # clean frontiers
-        new_frontier = my_utils.clean_frontiers(new_frontier_pts)
+        
+        # clean frontiers twice
+        new_frontier_pts2, new_occ = my_utils.clean_frontiers(new_frontier_pts)
+        new_frontier, new_occ2 = my_utils.clean_frontiers(new_frontier_pts2)
+        if len(new_occ) > 0:
+            occ_pts = np.append(occ_pts, new_occ, axis=0)
+        if len(new_occ2) > 0:
+            occ_pts = np.append(occ_pts, new_occ2, axis=0)
+
+        if len(occ_pts) > 0:
+            all_occ = np.append(all_occ, occ_pts, axis=0)
+
         # calc aabb for new frontier cells
         frontier_aabb = my_utils.getCellsAABB(new_frontier)
         if len(new_frontier) > 0:
@@ -111,16 +116,16 @@ def main():
         # pose should cover lots of frontiers and a few occupied cells if any
         # Future TODO: Use several possible poses instead of best one
         print("Calculating next poses . . .")
-        possible_poses = my_utils.calcPoses(frontier_aabb, occ_pts)
+        next_pos_to_be_close_to = init_path_deque.pop()
+        pose_calc_tic = time.perf_counter()
+        possible_poses = my_utils.calcPoses(frontier_aabb, occ_pts, init_cam_pts, next_pos_to_be_close_to)
+        pose_calc_toc = time.perf_counter()
 
         # Explore poses and pick best one based on distance to next point
         # Add to poses queue
-        next_pos_to_be_close_to = init_path_deque.pop()
         selected_pose, _ = my_utils.findPoseClosest(next_pos_to_be_close_to, possible_poses)
-        print("Next pose:", selected_pose)
         poses.appendleft(selected_pose)
-
-        covered_percent += 10
+        print("Next pose:", selected_pose)
 
         # Perf
         toc = time.perf_counter()
@@ -129,15 +134,16 @@ def main():
         print("Cam Time:", cam_toc-cam_tic)
         print("Trav Time:", trav_toc-trav_tic)
         print("Frontier Time:", frontier_toc-frontier_tic)
+        print("Pose Calc Time:", pose_calc_toc-pose_calc_tic)
         print("= Iter Time:", toc-tic)
         print("")
 
         # Vis this iteration
-        vis_occ = np.unique(all_occ, axis=0)
-        vis_free = np.unique(all_free, axis=0)
-        all_frontier = my_utils.pruneFrontiers(all_frontier) # TODO: Calc bounding box and send that?
+        # vis_occ = np.unique(all_occ, axis=0)
+        # vis_free = np.unique(all_free, axis=0)
+        # all_frontier = my_utils.pruneFrontiers(all_frontier) # TODO: Calc bounding box and send that?
 
-        my_utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
+        # my_utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
     
     all_toc = time.perf_counter()
 

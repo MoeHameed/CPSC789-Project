@@ -71,8 +71,8 @@ class AirSimClient:
         #self.client.simPlotPoints([pos], [0, 0, 1, 1], 15, 100000, True)
 
         print("Flying to position", pose[0], pose[1], pose[2], "and yaw", pose[3], ". . .")
+        self.client.rotateToYawAsync(int(pose[3])).join()   # yaw first to slightly reduce jitter
         self.client.moveToPositionAsync(pos.x_val, pos.y_val, pos.z_val, 3).join()
-        self.client.rotateToYawAsync(int(pose[3])).join()
         #self.client.hoverAsync().join()
         print("Done!")
 

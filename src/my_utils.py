@@ -84,7 +84,7 @@ def getCamPts(r, height, width):
     pts = np.empty((0, 3), int)
     for i in range(-width, width):
         for j in range(-height, height):
-            pt = sph2cart(i, j, r) #np.round(sph2cart(i, j, r)).astype(int)
+            pt = np.round(sph2cart(i, j, r)).astype(int)
             pts = np.append(pts, [pt], axis=0)
     return np.unique(pts, axis=0)
     
@@ -155,7 +155,7 @@ def visOccRays(occ_pts, free_pts, frontier_pts, pos):
 
     axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
 
-    o3d.visualization.draw_geometries([frontier_voxels, occ_voxels, sphere, axes]) # pylint: disable=maybe-no-member
+    o3d.visualization.draw_geometries([occ_voxels, sphere, axes]) # pylint: disable=maybe-no-member
 
 
 # TODO: Optimize & Use probabilistic logic to reduce noise, can also use a 3x3 kernel based on how many are frontier/free/occ
@@ -340,23 +340,32 @@ def getCellsAABB(pts):
 
     return min_b, max_b
 
+# sets forntier with more than 4 free neighbours as free cell -> "cleaning/pruning" the frontier points
 def clean_frontiers(frontiers):
     new_pts = []
+    new_occ = []
 
     for (x, y, z) in frontiers:
         pts = [(nx, ny, nz) for nx, ny, nz in [(x + 1, y, z), (x - 1, y, z), (x, y + 1, z), (x, y - 1, z), (x, y, z + 1), (x, y, z - 1)]]
         
         num_free = 0
+        num_occ = 0
         for pt in pts:
-            if get_cell(pt) == FREE:
+            pt_type = get_cell(pt)
+            if pt_type == FREE:
                 num_free += 1
+            elif pt_type == OCCUPIED:
+                num_occ += 1
 
         if num_free > 4:
             all_cells[x][y][z] = FREE
+        elif num_occ > 3:
+            all_cells[x][y][z] = OCCUPIED
+            new_occ.append((x, y, z))
         else:
             new_pts.append((x, y, z))
 
-    return new_pts
+    return new_pts, np.asarray(new_occ)
 
 def minDistToCells(cell_to_chk, cells):
     minDist = math.inf
@@ -381,41 +390,108 @@ def findPoseClosest(pt_to_be_near, pts_to_chk):
     return closest_pt, minDist
 
 # randomly sample for poses in free cells around occupied cells
-# given frontier bbox, new occ pts
+# given frontier bbox, new occ pts, pt to look at if there are no occ pts
 # return list of possible poses
 # TODO: use multithreading to speed up random search?
-def calcPoses(bbox, occ_pts):
+def calcPoses(bbox, occ_pts, init_cam_pts, nextGlobalPt):
     possible_poses = []
 
     minxyz, maxxyz = bbox
 
+    # TODO: Come up with better numbers
     minOccPercent = 0.0
-    minFrontPercent = 0.25
+    minFrontPercent = 0.01
 
     if len(occ_pts) > 0:
-        minOccPercent = 0.10
+        minOccPercent = 0.001
 
-    while len(possible_poses) < 1:
+    while len(possible_poses) < 5:
         # get up to 5 valid possible poses - small for speed
         for _ in range(5):
-            x = np.random.randint(low=minxyz[0], high=maxxyz[0])
-            y = np.random.randint(low=minxyz[1], high=maxxyz[1])
-            z = np.random.randint(low=minxyz[2], high=maxxyz[2])
+            x = np.random.randint(low=minxyz[0], high=maxxyz[0]+1)
+            y = np.random.randint(low=minxyz[1], high=maxxyz[1]+1)
+            z = np.random.randint(low=minxyz[2], high=maxxyz[2]+1)
 
-            if all_cells[x][y][z] == FREE and minDistToCells((x, y, z), occ_pts) > 4:
-                # check 4 of the poses - small for speed 
-                for _ in range(4):
-                    az = np.random.choice([0, 45, 90, 135, 180, 225, 270, 315])
-                    if is_good_pose((x, y, z, az), minOccPercent, minFrontPercent):
-                        possible_poses.append((x, y, z, az))
+            if all_cells[x][y][z] == FREE and minDistToCells((x, y, z), occ_pts) > 6:
+                if len(occ_pts) > 5:
+                    # check 4 of the poses - small for speed 
+                    for _ in range(4):
+                        az =  np.random.randint(low=0, high=360)
+                        if is_good_pose((x, y, z, az), minOccPercent, minFrontPercent, init_cam_pts):
+                            possible_poses.append((x, y, z, az))
+                else:
+                    # calc rotation to look at global point
+                    _, az, _ = cart2sph((x, y, z))
+                    possible_poses.append((x, y, z, az))
 
     return possible_poses
 
 # Determine if the pose is good
 # Based on if min occ percent and min front percent are met by pose 
-def is_good_pose(pose, minOccPer, minFrontPer):
+def is_good_pose(pose, minOccPer, minFrontPer, init_cam_pts):
     # Use raycasting (using all_cells) to determine how many occupied and frontier would be covered 
-    return True
+    pos = (pose[0], pose[1], pose[2])
+    rot = R.from_euler('z', pose[3], degrees=True) 
+
+    cam_pts = getRtCamPoints(init_cam_pts, pos, rot)
+    rays = get_cam_traversal_pts(pos, cam_pts)
+    num_front, num_occ, total_pts = traversePosePts(rays, pos)
+
+    #print(pose, "::", num_front, num_occ, total_pts)
+
+    # Determine percentage of occupied cells and frontier cells 
+    if num_front/total_pts >= minFrontPer and num_occ/total_pts >= minOccPer:
+        return True
+
+    return False
+
+# TODO: Visualize
+# Do raycasting to check if pose is good
+def traversePosePts(rays, pos):
+    all_front_pts = []
+    all_occ_pts = []
+    all_other_pts = []
+
+    for ray in rays:
+        fPts, oPts, otherPts = traverseRay(ray)
+        if len(fPts) > 0:
+            all_front_pts.append(fPts)
+        if len(oPts) > 0:
+            all_occ_pts.append(oPts)
+        if len(otherPts) > 0:
+            all_other_pts.append(otherPts)
+
+    if len(all_front_pts) > 0:
+        all_front_pts = np.unique(np.concatenate(all_front_pts, axis=0), axis=0)
+    if len(all_occ_pts) > 0:
+        all_occ_pts = np.unique(np.concatenate(all_occ_pts, axis=0), axis=0)
+    if len(all_other_pts) > 0:
+        all_other_pts = np.unique(np.concatenate(all_other_pts, axis=0), axis=0)
+
+    #visOccRays(all_occ_pts, all_other_pts, all_front_pts, pos)
+
+    num_front = len(all_front_pts)
+    num_occ = len(all_occ_pts)
+    total_pts = len(all_other_pts) + num_front + num_occ
+
+    return num_front, num_occ, total_pts
+
+# gets first frontier or occupied point
+def traverseRay(ray_pts):
+    front_pts = []
+    occ_pts = []
+    other_pts = []
+
+    for pt in ray_pts:
+        if get_cell(pt) == FRONTIER:
+            front_pts.append(pt)
+            break
+        if get_cell(pt) == OCCUPIED:
+            occ_pts.append(pt)
+            break
+        other_pts.append(pt)
+
+    return front_pts, occ_pts, other_pts
 
 # Calculate centers of even sectors of 25 x 25 x 25 within volume 
 def calcSectors():
@@ -460,13 +536,14 @@ def calcHamOrder(pts):
         new_pts.append(pts[i])
     
     #Viz
-    # lines = []
-    # for i in range(len(new_pts)-1):
-    #     lines.append([i, i+1])
+    pts2 = [(y, x, z) for (x, y, z) in new_pts]
+    lines = []
+    for i in range(len(pts2)-1):
+        lines.append([i, i+1])
 
-    # axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
-    # line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(new_pts), lines=o3d.utility.Vector2iVector(lines))
-    # o3d.visualization.draw_geometries([line_set, axes])
+    axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
+    line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(pts2), lines=o3d.utility.Vector2iVector(lines))
+    o3d.visualization.draw_geometries([line_set, axes])
 
     return new_pts, dist
 
