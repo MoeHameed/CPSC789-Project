@@ -5,7 +5,6 @@ import vg
 import numpy as np
 import open3d as o3d
 import time
-from virtual_map import virtual_map as VMAP
 from collections import deque
 
 
@@ -16,7 +15,10 @@ def main():
     # TODO: Add print statements and more perf counters
     total_proc_time = 0
 
-    vmap = VMAP()
+    vis_counter = 0
+
+    print("Creating virtual map . . .")
+    my_utils.initVMAP()
 
     init_cam_pts = my_utils.getCamPts(30, 30, 53)
 
@@ -83,7 +85,7 @@ def main():
         # Traverse cam pts to get occupancies - Takes ~1 sec - TODO: Optimize
         print("Traversing rays . . .")
         trav_tic = time.perf_counter()
-        occ_pts, free_pts = vmap.get_occ_for_rays(cam_traversal_pts)
+        occ_pts, free_pts = my_utils.get_occ_for_rays(cam_traversal_pts)
 
         if len(free_pts) > 0:
             all_free = np.append(all_free, free_pts, axis=0)
@@ -97,12 +99,12 @@ def main():
         # clean frontiers twice
         new_frontier_pts2, new_occ = my_utils.clean_frontiers(new_frontier_pts)
         new_frontier, new_occ2 = my_utils.clean_frontiers(new_frontier_pts2)
-        if len(new_occ) > 0:
-            occ_pts = np.append(occ_pts, new_occ, axis=0)
-        if len(new_occ2) > 0:
-            occ_pts = np.append(occ_pts, new_occ2, axis=0)
-
         if len(occ_pts) > 0:
+            if len(new_occ) > 0:
+                occ_pts = np.append(occ_pts, new_occ, axis=0)
+            if len(new_occ2) > 0:
+                occ_pts = np.append(occ_pts, new_occ2, axis=0)
+
             all_occ = np.append(all_occ, occ_pts, axis=0)
 
         # calc aabb for new frontier cells
@@ -118,7 +120,7 @@ def main():
         print("Calculating next poses . . .")
         next_pos_to_be_close_to = init_path_deque.pop()
         pose_calc_tic = time.perf_counter()
-        possible_poses = my_utils.calcPoses(frontier_aabb, occ_pts, init_cam_pts, next_pos_to_be_close_to)
+        possible_poses = my_utils.calcPoses(frontier_aabb, all_free, all_occ, occ_pts, init_cam_pts, next_pos_to_be_close_to, pos)
         pose_calc_toc = time.perf_counter()
 
         # Explore poses and pick best one based on distance to next point
@@ -139,11 +141,16 @@ def main():
         print("")
 
         # Vis this iteration
-        # vis_occ = np.unique(all_occ, axis=0)
-        # vis_free = np.unique(all_free, axis=0)
-        # all_frontier = my_utils.pruneFrontiers(all_frontier) # TODO: Calc bounding box and send that?
+        if vis_counter > 25:
+            vis_counter = 0
 
-        # my_utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
+            vis_occ = np.unique(all_occ, axis=0)
+            vis_free = np.unique(all_free, axis=0)
+            all_frontier = my_utils.pruneFrontiers(all_frontier) # TODO: Calc bounding box and send that?
+
+            my_utils.visOccRays(vis_occ, vis_free, all_frontier, pos)
+
+        vis_counter += 1
     
     all_toc = time.perf_counter()
 
