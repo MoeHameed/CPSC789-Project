@@ -1,10 +1,17 @@
+import math
 import time
+from pprint import pprint
+
 import numpy as np
 import open3d as o3d
-from scipy.spatial.transform import Rotation as R
-import math
-from python_tsp.exact import solve_tsp_dynamic_programming, solve_tsp_brute_force
+import skimage.draw as sk
+from python_tsp.exact import (solve_tsp_brute_force,
+                              solve_tsp_dynamic_programming)
 from python_tsp.heuristics import solve_tsp_local_search
+from scipy.spatial.transform import Rotation as R
+
+import modules.binvox_rw as bvox
+import my_utils
 from astar_search import AStarSearch
 
 UNKNOWN = 0
@@ -13,6 +20,79 @@ OCCUPIED = 2
 FRONTIER = 3
 
 all_cells = np.zeros((150, 150, 50), dtype=int)
+
+voxels = []
+
+def initVMAP():
+    global voxels
+    voxels = bvox.read_as_3d_array(open("binvox/map.binvox", 'rb'))
+
+
+# True if occupied, False if free
+def get_voxel_occ(cell):
+    global voxels
+
+    (x_lim, y_lim, z_lim) = voxels.data.shape
+    if cell[0] in range(0, x_lim) and cell[1] in range(0, y_lim) and cell[2] in range(0, z_lim):
+        return voxels.data[cell[1]][cell[0]][cell[2]]
+    else:
+        return False
+
+# TODO: Optimize?
+def get_occ_for_ray(cells):
+    free_cells = []
+    occ_cell = []
+
+    for cell in cells:
+        if my_utils.all_cells[cell[0]][cell[1]][cell[2]] == my_utils.OCCUPIED:
+            break
+        
+        if my_utils.all_cells[cell[0]][cell[1]][cell[2]] == my_utils.FREE:
+            continue
+
+        # get voxel occupancy at cell - overwrites existing cell values
+        if get_voxel_occ(cell):
+            occ_cell.append(cell)
+            my_utils.all_cells[cell[0]][cell[1]][cell[2]] = my_utils.OCCUPIED
+            break
+        else:
+            free_cells.append(cell)
+            my_utils.all_cells[cell[0]][cell[1]][cell[2]] = my_utils.FREE
+
+    return free_cells, occ_cell
+
+# TODO: Optimize?
+def get_occ_for_rays(rays):
+    total_occ = []
+    total_free = []
+
+    for ray in rays:
+        free, occ = get_occ_for_ray(ray)
+        if len(free) > 0:
+            total_free.append(free)
+        if len(occ) > 0:
+            total_occ.append(occ)
+
+    if len(total_free) > 0:
+        total_free = np.concatenate(total_free, axis=0)
+        total_free = np.unique(total_free, axis=0)
+
+    if len(total_occ) > 0:
+        total_occ = np.concatenate(total_occ, axis=0)
+        total_occ = np.unique(total_occ, axis=0)
+        total_occ = total_occ[1:]
+
+    return total_occ, total_free
+
+def cart2pol(x, y):
+    rho = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y, x)
+    return rho, math.degrees(phi)
+
+def pol2cart(rho, phi):
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return x, y
 
 def get_cell(pos):
     (x, y, z) = pos
@@ -155,7 +235,7 @@ def visOccRays(occ_pts, free_pts, frontier_pts, pos):
 
     axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
 
-    o3d.visualization.draw_geometries([occ_voxels, sphere, axes]) # pylint: disable=maybe-no-member
+    o3d.visualization.draw_geometries([frontier_voxels, occ_voxels, sphere, axes]) # pylint: disable=maybe-no-member
 
 
 # TODO: Optimize & Use probabilistic logic to reduce noise, can also use a 3x3 kernel based on how many are frontier/free/occ
@@ -344,6 +424,7 @@ def getCellsAABB(pts):
 def clean_frontiers(frontiers):
     new_pts = []
     new_occ = []
+    new_free = []
 
     for (x, y, z) in frontiers:
         pts = [(nx, ny, nz) for nx, ny, nz in [(x + 1, y, z), (x - 1, y, z), (x, y + 1, z), (x, y - 1, z), (x, y, z + 1), (x, y, z - 1)]]
@@ -357,15 +438,16 @@ def clean_frontiers(frontiers):
             elif pt_type == OCCUPIED:
                 num_occ += 1
 
-        if num_free > 4:
-            all_cells[x][y][z] = FREE
-        elif num_occ > 3:
+        if num_occ > num_free:
             all_cells[x][y][z] = OCCUPIED
             new_occ.append((x, y, z))
+        elif num_free > 4:
+            all_cells[x][y][z] = FREE
+            new_free.append((x, y, z))
         else:
             new_pts.append((x, y, z))
 
-    return new_pts, np.asarray(new_occ)
+    return new_pts, np.asarray(new_occ), np.asarray(new_free)
 
 def minDistToCells(cell_to_chk, cells):
     minDist = math.inf
@@ -393,7 +475,7 @@ def findPoseClosest(pt_to_be_near, pts_to_chk):
 # given frontier bbox, new occ pts, pt to look at if there are no occ pts
 # return list of possible poses
 # TODO: use multithreading to speed up random search?
-def calcPoses(bbox, occ_pts, init_cam_pts, nextGlobalPt):
+def calcPoses(bbox, all_free, all_occ, occ_pts, init_cam_pts, nextGlobalPt, curr_pos):
     possible_poses = []
 
     minxyz, maxxyz = bbox
@@ -403,16 +485,22 @@ def calcPoses(bbox, occ_pts, init_cam_pts, nextGlobalPt):
     minFrontPercent = 0.01
 
     if len(occ_pts) > 0:
-        minOccPercent = 0.001
+        minOccPercent = 0.01
+
+    numChecked = 0
 
     while len(possible_poses) < 5:
+        if numChecked > 5:
+            break
+
+        numChecked += 1
+
         # get up to 5 valid possible poses - small for speed
         for _ in range(5):
-            x = np.random.randint(low=minxyz[0], high=maxxyz[0]+1)
-            y = np.random.randint(low=minxyz[1], high=maxxyz[1]+1)
-            z = np.random.randint(low=minxyz[2], high=maxxyz[2]+1)
+            idx = np.random.randint(low=0, high=len(all_free))
+            (x, y, z) = all_free[idx]
 
-            if all_cells[x][y][z] == FREE and minDistToCells((x, y, z), occ_pts) > 6:
+            if get_cell((x, y, z)) == FREE and minDistToCells((x, y, z), all_occ) > 8 and isLoS(curr_pos, (x, y, z)):
                 if len(occ_pts) > 5:
                     # check 4 of the poses - small for speed 
                     for _ in range(4):
@@ -421,10 +509,31 @@ def calcPoses(bbox, occ_pts, init_cam_pts, nextGlobalPt):
                             possible_poses.append((x, y, z, az))
                 else:
                     # calc rotation to look at global point
-                    _, az, _ = cart2sph((x, y, z))
+                    az = math.atan2(nextGlobalPt[0]-curr_pos[0], nextGlobalPt[1]-curr_pos[1])
+                    az = math.degrees(az)
+                    if az < 0:
+                        az += 360 
                     possible_poses.append((x, y, z, az))
 
+    if len(possible_poses) < 1:
+        az = math.atan2(nextGlobalPt[0]-curr_pos[0], nextGlobalPt[1]-curr_pos[1])
+        az = math.degrees(az)
+        if az < 0:
+            az += 360 
+        possible_poses.append((curr_pos[0], curr_pos[1], curr_pos[2], az))
+
     return possible_poses
+
+def isLoS(curr_pos, new_pos):
+    # calc ray points
+    pts = get_cells_along_line(curr_pos, new_pos)
+
+    for pt in pts:
+        if get_voxel_occ(pt):
+            print("NOT IN LOS")
+            return False
+    
+    return True
 
 # Determine if the pose is good
 # Based on if min occ percent and min front percent are met by pose 
@@ -536,14 +645,14 @@ def calcHamOrder(pts):
         new_pts.append(pts[i])
     
     #Viz
-    pts2 = [(y, x, z) for (x, y, z) in new_pts]
-    lines = []
-    for i in range(len(pts2)-1):
-        lines.append([i, i+1])
+    # pts2 = [(y, x, z) for (x, y, z) in new_pts]
+    # lines = []
+    # for i in range(len(pts2)-1):
+    #     lines.append([i, i+1])
 
-    axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
-    line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(pts2), lines=o3d.utility.Vector2iVector(lines))
-    o3d.visualization.draw_geometries([line_set, axes])
+    # axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
+    # line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(pts2), lines=o3d.utility.Vector2iVector(lines))
+    # o3d.visualization.draw_geometries([line_set, axes]) # pylint: disable=maybe-no-member
 
     return new_pts, dist
 
@@ -563,16 +672,17 @@ def calcAStarBetweenPaths(pts, startPt=None):
         all_path_pts.append(path)    # Add to a deque
 
     # Viz
-    # path_pts = np.concatenate(all_path_pts, axis=0)
-    # pcd = o3d.geometry.PointCloud()
-    # pcd.points = o3d.utility.Vector3dVector(path_pts)
+    path_pts = np.concatenate(all_path_pts, axis=0)
+    path_pts2 = [(y, x, z) for (x, y, z) in path_pts]
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(path_pts2)
 
-    # lines = []
-    # for i in range(len(path_pts)-1):
-    #     lines.append([i, i+1])
+    lines = []
+    for i in range(len(path_pts2)-1):
+        lines.append([i, i+1])
 
-    # axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
-    # line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(path_pts), lines=o3d.utility.Vector2iVector(lines))
-    # o3d.visualization.draw_geometries([line_set, pcd, axes]) # pylint: disable=maybe-no-member
+    axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10, origin=[0, 0, 0])
+    line_set = o3d.geometry.LineSet(points=o3d.utility.Vector3dVector(path_pts2), lines=o3d.utility.Vector2iVector(lines))
+    o3d.visualization.draw_geometries([line_set, pcd, axes]) # pylint: disable=maybe-no-member
 
     return all_path_pts
