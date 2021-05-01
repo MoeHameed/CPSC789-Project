@@ -405,6 +405,7 @@ def get_cam_traversal_pts(origin, cam_pts):
     rays = []
     for pt in cam_pts:
         rays.append(get_cells_along_line(origin, (pt[0], pt[1], pt[2])))
+
     return rays
 
 # returns (x1, y1, z1), (x2, y2, z2)
@@ -485,11 +486,11 @@ def calcPoses(bbox, all_free, all_occ, occ_pts, init_cam_pts, nextGlobalPt, curr
     minFrontPercent = 0.01
 
     if len(occ_pts) > 0:
-        minOccPercent = 0.01
+        minOccPercent = 0.001
 
     numChecked = 0
 
-    while len(possible_poses) < 5:
+    while len(possible_poses) < 5 and len(all_free) > 0:
         if numChecked > 5:
             break
 
@@ -500,11 +501,11 @@ def calcPoses(bbox, all_free, all_occ, occ_pts, init_cam_pts, nextGlobalPt, curr
             idx = np.random.randint(low=0, high=len(all_free))
             (x, y, z) = all_free[idx]
 
-            if get_cell((x, y, z)) == FREE and minDistToCells((x, y, z), all_occ) > 8 and isLoS(curr_pos, (x, y, z)):
+            if get_cell((x, y, z)) == FREE and minDistToCells((x, y, z), all_occ) > 6 and isLoS(curr_pos, (x, y, z)):
                 if len(occ_pts) > 5:
                     # check 4 of the poses - small for speed 
                     for _ in range(4):
-                        az =  np.random.randint(low=0, high=360)
+                        az = np.random.randint(low=0, high=360)
                         if is_good_pose((x, y, z, az), minOccPercent, minFrontPercent, init_cam_pts):
                             possible_poses.append((x, y, z, az))
                 else:
@@ -516,10 +517,7 @@ def calcPoses(bbox, all_free, all_occ, occ_pts, init_cam_pts, nextGlobalPt, curr
                     possible_poses.append((x, y, z, az))
 
     if len(possible_poses) < 1:
-        az = math.atan2(nextGlobalPt[0]-curr_pos[0], nextGlobalPt[1]-curr_pos[1])
-        az = math.degrees(az)
-        if az < 0:
-            az += 360 
+        az = np.random.randint(low=0, high=360)
         possible_poses.append((curr_pos[0], curr_pos[1], curr_pos[2], az))
 
     return possible_poses

@@ -141,7 +141,7 @@ def main():
         print("")
 
         # Vis this iteration
-        if vis_counter > 250:
+        if vis_counter > 10:
             vis_counter = 0
 
             vis_occ = np.unique(all_occ, axis=0)
